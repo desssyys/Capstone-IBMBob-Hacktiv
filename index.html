@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Employee Onboarding Dashboard</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <style>
+    /* Smooth transition for filter-driven re-renders */
+    #employee-table tbody tr {
+      transition: opacity 0.2s ease;
+    }
+
+    /* Custom scrollbar for the table wrapper */
+    .table-scroll::-webkit-scrollbar { height: 6px; }
+    .table-scroll::-webkit-scrollbar-track { background: #f1f5f9; }
+    .table-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen font-sans">
+
+  <!-- ═══════════════════════════ HEADER ═══════════════════════════ -->
+  <header class="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-10">
+    <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div>
+        <h1 class="text-xl font-bold text-slate-800 tracking-tight">
+          🧭 Employee Onboarding Dashboard
+        </h1>
+        <p class="text-xs text-slate-500 mt-0.5">HR Analytics · Real-time overview</p>
+      </div>
+      <!-- Last-updated badge (populated by JS) -->
+      <span id="last-updated" class="text-xs text-slate-400 bg-slate-100 px-3 py-1 rounded-full border border-slate-200"></span>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════ MAIN ════════════════════════════ -->
+  <main class="max-w-7xl mx-auto px-6 py-8 space-y-8">
+
+    <!-- ── FILTERS ────────────────────────────────────────────── -->
+    <section aria-label="Filters" class="bg-white rounded-2xl shadow-sm border border-slate-200 px-6 py-4">
+      <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Filters</h2>
+      <div class="flex flex-wrap gap-4 items-end">
+
+        <!-- Department filter -->
+        <div class="flex flex-col gap-1">
+          <label for="filter-department" class="text-xs font-medium text-slate-600">Department</label>
+          <select id="filter-department"
+            class="rounded-lg border border-slate-300 bg-slate-50 text-sm text-slate-700 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[160px]">
+            <option value="All">All Departments</option>
+            <option value="Engineering">Engineering</option>
+            <option value="HR">HR</option>
+            <option value="Marketing">Marketing</option>
+            <option value="Finance">Finance</option>
+            <option value="Sales">Sales</option>
+          </select>
+        </div>
+
+        <!-- Status filter -->
+        <div class="flex flex-col gap-1">
+          <label for="filter-status" class="text-xs font-medium text-slate-600">Onboarding Status</label>
+          <select id="filter-status"
+            class="rounded-lg border border-slate-300 bg-slate-50 text-sm text-slate-700 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[160px]">
+            <option value="All">All Statuses</option>
+            <option value="Completed">Completed</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Not Started">Not Started</option>
+          </select>
+        </div>
+
+        <!-- Reset button -->
+        <button id="btn-reset"
+          class="mt-auto px-4 py-2 rounded-lg border border-slate-300 text-sm text-slate-600 hover:bg-slate-100 transition-colors">
+          Reset Filters
+        </button>
+      </div>
+    </section>
+
+    <!-- ── KPI CARDS ───────────────────────────────────────────── -->
+    <section aria-label="KPI Summary" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+      <!-- Total Employees -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 px-6 py-5 flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+          <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6 5.87a4 4 0 100-8 4 4 0 000 8zm6-10a3 3 0 100-6 3 3 0 000 6zM3 10a3 3 0 100-6 3 3 0 000 6z"/>
+          </svg>
+        </div>
+        <div>
+          <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">Total Employees</p>
+          <p id="kpi-total" class="text-3xl font-bold text-slate-800 leading-none mt-1">—</p>
+        </div>
+      </div>
+
+      <!-- Avg Completion Rate -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 px-6 py-5 flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
+          <svg class="w-6 h-6 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
+          </svg>
+        </div>
+        <div>
+          <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">Avg Completion Rate</p>
+          <p id="kpi-completion" class="text-3xl font-bold text-slate-800 leading-none mt-1">—</p>
+        </div>
+      </div>
+
+      <!-- Overall Satisfaction -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 px-6 py-5 flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center shrink-0">
+          <svg class="w-6 h-6 text-violet-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+          </svg>
+        </div>
+        <div>
+          <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">Overall Satisfaction</p>
+          <p id="kpi-satisfaction" class="text-3xl font-bold text-slate-800 leading-none mt-1">—</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── CHARTS ──────────────────────────────────────────────── -->
+    <section aria-label="Charts" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+      <!-- Onboarding Status Distribution (Doughnut) -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+        <h2 class="text-sm font-semibold text-slate-700 mb-1">Onboarding Status Distribution</h2>
+        <p class="text-xs text-slate-400 mb-5">Proportion of employees by current status</p>
+        <div class="relative h-64 flex items-center justify-center">
+          <canvas id="chart-status"></canvas>
+        </div>
+      </div>
+
+      <!-- Completion Rate by Department (Bar) -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+        <h2 class="text-sm font-semibold text-slate-700 mb-1">Avg Completion Rate by Department</h2>
+        <p class="text-xs text-slate-400 mb-5">Average onboarding completion per department</p>
+        <div class="relative h-64">
+          <canvas id="chart-department"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── EMPLOYEE TABLE ──────────────────────────────────────── -->
+    <section aria-label="Employee Records" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-sm font-semibold text-slate-700">Employee Records</h2>
+        <span id="table-count" class="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200"></span>
+      </div>
+      <div class="table-scroll overflow-x-auto rounded-xl border border-slate-200">
+        <table id="employee-table" class="w-full text-sm text-left">
+          <thead class="bg-slate-50 text-xs text-slate-500 uppercase tracking-wider border-b border-slate-200">
+            <tr>
+              <th class="px-4 py-3">Name</th>
+              <th class="px-4 py-3">Department</th>
+              <th class="px-4 py-3">Status</th>
+              <th class="px-4 py-3">Completion</th>
+              <th class="px-4 py-3">Feedback Score</th>
+            </tr>
+          </thead>
+          <tbody id="table-body" class="divide-y divide-slate-100">
+            <!-- Rows injected by script.js -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ═════════════════════════ FOOTER ══════════════════════════ -->
+  <footer class="max-w-7xl mx-auto px-6 py-6 text-center text-xs text-slate-400">
+    Employee Onboarding Dashboard · HR Analytics · Data is mock / illustrative only
+  </footer>
+
+  <!-- Main application script -->
+  <script src="script.js"></script>
+</body>
+</html>
